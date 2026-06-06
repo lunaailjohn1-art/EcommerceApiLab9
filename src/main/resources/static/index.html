@@ -1,0 +1,164 @@
+!DOCTYPE html>
+<html>
+<head>
+    <title>Ecommerce Lab 9</title>
+    <style>
+        body { font-family: Arial; margin: 20px; }
+        .container { display: flex; gap: 20px; flex-wrap: wrap; }
+        .form-box { border: 1px solid #ccc; padding: 20px; border-radius: 8px; width: 280px; }
+        input, button { display: block; margin: 10px 0; padding: 8px; width: 100%; box-sizing: border-box; }
+        button { background-color: #007bff; color: white; border: none; cursor: pointer; }
+        .error { color: red; font-size: 12px; }
+        .success { color: green; font-size: 12px; }
+        #productList { margin-top: 20px; }
+        .product-card { border: 1px solid #ddd; padding: 10px; margin: 10px 0; border-radius: 5px; }
+        hr { margin: 20px 0; }
+    </style>
+</head>
+<body>
+<h1>Ecommerce Product Catalog</h1>
+
+<div class="container">
+    <div class="form-box">
+        <h3>Register</h3>
+        <input type="text" id="regUsername" placeholder="Username">
+        <input type="password" id="regPassword" placeholder="Password">
+        <input type="text" id="regRole" placeholder="Role (ROLE_USER)" value="ROLE_USER">
+        <button onclick="register()">Register</button>
+        <div id="regMessage"></div>
+    </div>
+
+    <div class="form-box">
+        <h3>Login</h3>
+        <input type="text" id="loginUsername" placeholder="Username">
+        <input type="password" id="loginPassword" placeholder="Password">
+        <button onclick="login()">Login</button>
+        <div id="loginMessage"></div>
+    </div>
+
+    <div class="form-box">
+        <h3>Session</h3>
+        <button onclick="logout()">Logout</button>
+        <div id="sessionStatus"></div>
+    </div>
+</div>
+
+<hr>
+
+<h2>Products</h2>
+<button onclick="loadProducts()">Refresh Products</button>
+<div id="productList">Loading...</div>
+
+<script>
+    async function register() {
+        const username = document.getElementById('regUsername').value;
+        const password = document.getElementById('regPassword').value;
+        const role = document.getElementById('regRole').value;
+        const msgDiv = document.getElementById('regMessage');
+
+        try {
+            const res = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password, role })
+            });
+            const text = await res.text();
+            if (res.ok) {
+                msgDiv.innerHTML = '<span class="success">Registration successful! You can now login.</span>';
+            } else {
+                msgDiv.innerHTML = '<span class="error">' + text + '</span>';
+            }
+        } catch (err) {
+            msgDiv.innerHTML = '<span class="error">Error: ' + err.message + '</span>';
+        }
+    }
+
+    async function login() {
+        const username = document.getElementById('loginUsername').value;
+        const password = document.getElementById('loginPassword').value;
+        const msgDiv = document.getElementById('loginMessage');
+
+        const formData = new URLSearchParams();
+        formData.append('username', username);
+        formData.append('password', password);
+
+        try {
+            const res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData,
+                credentials: 'include'
+            });
+            if (res.redirected || res.ok) {
+                msgDiv.innerHTML = '<span class="success">Login successful!</span>';
+                loadProducts();
+                checkSession();
+            } else {
+                msgDiv.innerHTML = '<span class="error">Login failed. Check username/password.</span>';
+            }
+        } catch (err) {
+            msgDiv.innerHTML = '<span class="error">Error: ' + err.message + '</span>';
+        }
+    }
+
+    async function logout() {
+        try {
+            const res = await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+            if (res.ok) {
+                document.getElementById('sessionStatus').innerHTML = 'Logged out';
+                document.getElementById('productList').innerHTML = 'Please login to see products.';
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    async function loadProducts() {
+        try {
+            const res = await fetch('/api/products', { credentials: 'include' });
+            if (res.status === 401 || res.status === 403) {
+                document.getElementById('productList').innerHTML = 'Please login to see products.';
+                return;
+            }
+            if (!res.ok) throw new Error('Failed to load');
+            const products = await res.json();
+            displayProducts(products);
+            checkSession();
+        } catch (err) {
+            document.getElementById('productList').innerHTML = 'Error loading products.';
+        }
+    }
+
+    function displayProducts(products) {
+        const container = document.getElementById('productList');
+        if (products.length === 0) {
+            container.innerHTML = '<p>No products yet. Add one via Postman.</p>';
+            return;
+        }
+        container.innerHTML = products.map(p => `
+                <div class="product-card">
+                    <strong>${p.name}</strong><br>
+                    Price: ₱${p.price}<br>
+                    Category: ${p.category}<br>
+                    Stock: ${p.stockQuantity}
+                </div>
+            `).join('');
+    }
+
+    async function checkSession() {
+        try {
+            const res = await fetch('/api/products', { credentials: 'include' });
+            if (res.ok) {
+                document.getElementById('sessionStatus').innerHTML = ' Logged in';
+            } else {
+                document.getElementById('sessionStatus').innerHTML = ' Not logged in';
+            }
+        } catch (e) {
+            document.getElementById('sessionStatus').innerHTML = ' Not logged in';
+        }
+    }
+
+    loadProducts();
+</script>
+</body>
+</html>
