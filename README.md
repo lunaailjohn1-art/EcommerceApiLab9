@@ -1,5 +1,5 @@
 # EcommerceApiLab9
 
-Submitted by: 
-    QUIMBO, ELIZAMAE L.
-    LUNA, AILJOHN S.
+Submitted by:
+QUIMBO, ELIZAMAE L.
+LUNA, AILJOHN S.
